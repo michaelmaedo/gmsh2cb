@@ -77,7 +77,7 @@ contains
 
         call create_cbmesh(gmsh, new_nelem, bcond, cbmesh, err)
 
-        call write_grid( cbmesh, param, gri, err )
+        call write_grid( cbmesh, gri, err )
 
         call write_gen( cbmesh, param, matprop, mech_bc, flux_bc ,gen, err )
         
@@ -556,9 +556,8 @@ contains
     end subroutine create_cbmesh
 
     
-    subroutine write_grid( cbmesh, param, gri, err )
+    subroutine write_grid( cbmesh, gri, err )
         type(mesh), intent(in) :: cbmesh
-        type(control), intent(in) :: param
         type(data_file), intent(in) :: gri
         type(error), intent(inout) :: err
 
@@ -566,201 +565,41 @@ contains
         integer(LONG) :: idime, ndime
         integer(LONG) :: inode, nnode
         integer(LONG) :: ielem, nelem
-        integer(LONG) :: ndf, nvar
 
-        character( len = 50 ) :: ifmt
-        character( len = 150 ) :: str
+        character( len = 20 ) :: ifmt
         
-!-----------------------------------------------------------------------------------------
-10      format(&
-            &'$=======================================================================',/&
-            &'$     Node             Coords_X             Coords_Y   Mech_BC   Flux_BC',/&
-            &'$=======================================================================')
-!-----------------------------------------------------------------------------------------
-20      format(&
-            &'$=============================================================================================================',/&
-            &'$  Element    El.Type    Mat.Prop                                   Connectivities                            ',/&
-            &'$=============================================================================================================')
-!-----------------------------------------------------------------------------------------
-30      format('$     node')
-!-----------------------------------------------------------------------------------------
-40      format('        Displ_X')
-!-----------------------------------------------------------------------------------------
-50      format('        Displ_Y')
-!-----------------------------------------------------------------------------------------
-60      format('        Displ_Z')
-!-----------------------------------------------------------------------------------------
-70      format('     Liq._Press')
-!-----------------------------------------------------------------------------------------
-80      format('     Gas._Press')
-!-----------------------------------------------------------------------------------------
-90      format('    Temperature')
-!-----------------------------------------------------------------------------------------
-100     format(&
-            &'$===================================================================================================',/&
-            &'$  element      stress_XX      stress_YY      stress_ZZ      stress_XY      stress_YZ      stress_XZ',/&
-            &'$===================================================================================================')
-!-----------------------------------------------------------------------------------------
-110     format('$  element       porosity')
-!-----------------------------------------------------------------------------------------
-120     format('         perm_X')
-!-----------------------------------------------------------------------------------------
-130     format('         perm_Y')
-!-----------------------------------------------------------------------------------------
-140     format('         perm_Z')
-!-----------------------------------------------------------------------------------------
-150     format('       anisot_X')
-!-----------------------------------------------------------------------------------------
-160     format('       anisot_Y')
-!-----------------------------------------------------------------------------------------
-170     format('       anisot_Z')
-!-----------------------------------------------------------------------------------------
-180     format('       Vol_elem')
-!-----------------------------------------------------------------------------------------
-200     format(&
-            &'$=====================',/&
-            &'$ Plot nodal variables',/&
-            &'$=====================',/&
-            &'         0',/&
-            &'         0',//&
-            &'$===============================',/&
-            &'$ Flux boundary conditions plots',/&
-            &'$===============================',/&
-            &'         0',/&
-            &'         0',//&
-            &'$=======================',/&
-            &'$ Plot element variables',/&
-            &'$=======================',/&
-            &'         0',/&
-            &'         0',/&
-            &'         0')
-            
-!-----------------------------------------------------------------------------------------
-210     format(11i10)
-!-----------------------------------------------------------------------------------------
-        
-        write( gri % ID, fmt = * ) 0, 0, 0
+! 10      format()
+! 20      format()
+! 30      format()
+
+        write( gri % ID, fmt = * ) 0, 0
         
         ncond = 2
         ndime = cbmesh % ndime
         nnode = cbmesh % nnode
 
-!-----------------------------------------------------------------------------------------
-!       Nodal Coordinates
-!-----------------------------------------------------------------------------------------
         ifmt = ''
         if ( ndime == 2 ) then
-            ifmt = '(i10,2(" ",e20.13),2i10)'
+            ifmt = '(i10,2e20.13,2i10)'
         else if ( ndime == 3 ) then
-            ifmt = '(i10,3(" ", e20.13),2i10)'
+            ifmt = '(i10,3e20.13,2i10)'
         end if
         
-        write( gri % ID, 10 )
         do inode = 1, nnode
             write( gri % ID, ifmt) inode, &
                 & ( cbmesh % coord( idime, inode ), idime = 1, ndime ), &
                 & ( cbmesh % bcond( icond, inode ), icond = 1, 2 )
         end do
-        write( gri % ID, * )
-        
-!-----------------------------------------------------------------------------------------
-!       Connectivity list
-!-----------------------------------------------------------------------------------------
-        write( gri % ID, 20 )
+
         nelem = cbmesh % nelem
         do ielem = 1, nelem
-            write( gri % ID, 210 ) ielem, &
+            write( gri % ID, 200) ielem, &
                 & cbmesh % elset( ielem ), &
                 & cbmesh % eltype( ielem ), &
                 & ( cbmesh % connec( inode, ielem ), inode = 1, MAX_NODES )
         end do
-        write( gri % ID, * )
-        
-!-----------------------------------------------------------------------------------------
-!       Initial Unknown
-!-----------------------------------------------------------------------------------------
 
-        str = ''
-        ndf = param % ioptdispl * ndime + &
-            & param % ioptpl + param % ioptpg + param % iopttemp
-        str = repeat('===============',ndf)
-        str = '$========='//trim(str)
-        
-        write( gri % ID, '(A)' ) str
-        write( gri % ID, 30, advance = 'no' )
-        if ( param % ioptdispl == 1 ) then
-
-            write( gri % ID, 40, advance = 'no' )
-            if ( ndime > 1 )  write( gri % ID, 50, advance = 'no' )
-            if ( ndime == 3 ) write( gri % ID, 60, advance = 'no' )
-
-        end if
-
-        if ( param % ioptpl == 1 )   write( gri % ID, 70, advance = 'no')
-        if ( param % ioptpg == 1 )   write( gri % ID, 80, advance = 'no')
-        if ( param % iopttemp == 1 ) write( gri % ID, 90, advance = 'no')
-        write( gri % ID, * )
-        write( gri % ID, '(A)' ) str
-
-        ifmt = ''; str = ''
-        str = repeat(' 0.000000000000',ndf)
-        write ( gri % ID, '(i10,A)')     1, str 
-        write ( gri % ID, '(i10,A)') nnode, str 
-        write( gri % ID, * )
-
-!-----------------------------------------------------------------------------------------
-!       Initial Stresses and Historical Variables
-!-----------------------------------------------------------------------------------------
-        if ( param % ioptdispl == 1 ) then
-            str = repeat(' 0.000000000000',6)
-            write( gri % ID, 100 )
-            write( gri % ID, '(i10,A)' )     1, str
-            write( gri % ID, '(i10,A)' ) nelem, str
-            write( gri % ID, * )
-        end if
-        
-!-----------------------------------------------------------------------------------------
-!       Porosity and Permeability
-!-----------------------------------------------------------------------------------------
-        nvar = 2
-        if ( param % ioptpl == 1 .or. param % ioptpg == 1 ) then
-            nvar = nvar + 1
-            if ( ndime == 2) nvar = nvar + 2
-            if ( ndime == 3 ) nvar = nvar + 5
-        end if
-
-        str = ''
-        str = repeat('===============',nvar)
-        str = '$========='//trim(str)
-        write( gri % ID, '(A)') str
-        
-        write( gri % ID, 110, advance = 'no')
-        if ( param % ioptpl == 1 .or. param % ioptpg == 1 ) then
-            write( gri % ID, 120, advance = 'no')
-            if ( ndime == 2) then
-                write( gri % ID, 130, advance = 'no')
-                write( gri % ID, 150, advance = 'no')
-            else if ( ndime == 3 ) then
-                write( gri % ID, 130, advance = 'no')
-                write( gri % ID, 140, advance = 'no')
-                write( gri % ID, 150, advance = 'no')
-                write( gri % ID, 160, advance = 'no')
-                write( gri % ID, 170, advance = 'no')
-            end if
-        end if
-        write( gri % ID, 180)
-        write( gri % ID, '(A)') str
-
-        str = ''
-        str = repeat(' 0.000000000000', nvar)
-        write( gri % ID, '(i10,A)' )     1, str
-        write( gri % ID, '(i10,A)' ) nelem, str
-        write( gri % ID, * )
-
-!-----------------------------------------------------------------------------------------
-!       Plots       
-!-----------------------------------------------------------------------------------------
-        write( gri % ID, 200 )
+200     format(11i10)
         
     end subroutine write_grid
 
@@ -935,7 +774,7 @@ contains
             & 0, matprop % nsets, 185, 0, 0, 0
 
         write( gen % ID, 310 ) 99999, 1, 0, &
-            & param % ioptdispl * cbmesh % ndime + param % ioptpl + param % ioptpg + param % iopttemp, &
+            & param % ioptdispl + param % ioptpl + param % ioptpg + param % iopttemp, &
             & 1, 6, 1, 0
 
         write( gen % ID, 320 ) mech_bc % nsets, flux_bc % nsets

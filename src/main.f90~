@@ -35,11 +35,7 @@ program main
         & get_error_status, &
         & print_error
 
-    use gmsh2cb_mod, only: gmsh2cb, &
-        & control, &
-        & set_control_param, &
-        & set_iopt, &
-        & set_unsat
+    use gmsh2cb_mod, only: gmsh2cb
     
     implicit none
     
@@ -48,8 +44,7 @@ program main
     type(data_file) :: gen
     type(data_file) :: log
     type(error) :: err
-    type(control) :: param
-    
+
     integer(LONG) :: argc
     character(len = LEN_NAME_FILE) :: argv
     character(len = LEN_NAME_FILE) :: loc_str
@@ -74,28 +69,18 @@ program main
     call error_( err )
     
     !Get arguments from the command line
-    argc = 0; argv(:) = ''
-    call set_control_param(param)
+    argc = 0; argv = ''
     do
         call get_command_argument(argc, loc_str)
         if (len_trim(loc_str) == 0) exit
         argc = argc + 1
         argv = loc_str
-
-        call set_iopt(loc_str, param)
-
-        call set_unsat(loc_str, param)
-        
     end do
-
-    if (argc == 1) then
-        ! write manual
-    end if
-       
+    
     call open_gmsh2cb_files(argv, msh, gen, gri, log, err)
 
     if ( there_is_no_error( get_error_status( err ) ) ) &
-        call gmsh2cb(msh, gen, gri, log, param, err)
+        call gmsh2cb(msh, gen, gri, log, err)
 
     call print_error( get_file_ID( log ), err)
     
@@ -104,7 +89,6 @@ program main
     
 contains
 
-    
     subroutine open_gmsh2cb_files(filename, msh, gen, gri, log, err)
         character(len = *), intent(in) :: filename
         type(error), intent(inout) :: err
