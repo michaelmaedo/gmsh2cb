@@ -15,6 +15,8 @@ module gmsh2cb_mod
         & print_error
 
     use error_gmsh2cb_mod
+
+    use jacob_mod, only: check_jacob
     
 #include "utilities/error.fpp"
 
@@ -38,6 +40,7 @@ module gmsh2cb_mod
         integer(LONG) :: nnode !number of nodes
         integer(LONG) :: nelem !number of elements
         integer(LONG) :: ndime !number of spatial dimensions
+        integer(LONG) :: mnval !number of minimum gauss point per element
         integer(LONG), allocatable :: elset(:) !element sets
         integer(LONG), allocatable :: eltype(:) !element type
         integer(LONG), allocatable :: connec(:,:) !connectivity list
@@ -183,6 +186,7 @@ contains
         call malloc_matprop_and_bc( n, matprop, mech_bc, flux_bc, err )
         
         gmsh % ndime = 0
+        gmsh % mnval = 0
         do i = 1, n
             call get_record(msh, txt, ntxt, num, nnum, err)
             TEST( err )
@@ -336,7 +340,7 @@ contains
                 new_nelem = new_nelem + 1
                 gmsh % elset( new_nelem ) = matprop % set( loc_elset )
                 gmsh % connec( 1 : elnod, new_nelem ) = gmsh % connec( 1 : elnod, ielem )
-                call set_element_type(loc_eltype, gmsh % eltype( new_nelem ), err )
+                call set_element_type(loc_eltype, gmsh % eltype( new_nelem ), gmsh % mnval, err )
             end if
             
         end do
@@ -416,29 +420,34 @@ contains
     end subroutine malloc_physical
 
 
-    subroutine set_element_type( gmsh_eltype, cb_eltype, err )
+    subroutine set_element_type( gmsh_eltype, cb_eltype, mnval, err )
         integer(LONG), intent(in) :: gmsh_eltype
         type(error), intent(inout) :: err
-        integer(LONG), intent(out) :: cb_eltype
+        integer(LONG), intent(out) :: cb_eltype, mnval
 
+        integer(LONG) :: nval
+        
         select case(gmsh_eltype)
         case (1)
-            cb_eltype = 8
+            cb_eltype = 8; nval = 1
         case (2)
-            cb_eltype = 1
+            cb_eltype = 1; nval = 1
         case (3)
-            cb_eltype = 5
+            cb_eltype = 5; nval = 4
         case (4)
-            cb_eltype = 1
+            cb_eltype = 1; nval = 1
         case (5)
-            cb_eltype = 3
+            cb_eltype = 3; nval = 8
         case (6)
-            cb_eltype = 26
+            cb_eltype = 26; nval = 2
         case (9)
-            cb_eltype = 12
+            cb_eltype = 12; nval = 2
         case default
             RAISE( ERROR_INVALID_ELEMENT, err )
         end select
+        if ( nval > mnval ) mnval = nval
+
+        return
     end subroutine set_element_type
     
 
@@ -539,7 +548,8 @@ contains
         cbmesh % nnode = gmsh % nnode
         cbmesh % nelem = new_nelem
         cbmesh % ndime = gmsh % ndime
-
+        cbmesh % mnval = gmsh % mnval
+        
         allocate( cbmesh % coord( gmsh % ndime, gmsh % nnode ) , stat = info )
         allocate( cbmesh % bcond( 2, gmsh % nnode ) , stat = info )
         allocate( cbmesh % connec( MAX_NODES, new_nelem ) , stat = info )
@@ -552,6 +562,13 @@ contains
         cbmesh % connec = gmsh % connec( :, 1 : new_nelem )
         cbmesh % eltype = gmsh % eltype( 1 : new_nelem )
         cbmesh % elset = gmsh % elset( 1 : new_nelem )
+
+        call check_jacob( &
+            & cbmesh % ndime, &
+            & cbmesh % nelem, &
+            & cbmesh % coord, &
+            & cbmesh % eltype, &
+            & cbmesh % connec )
         
     end subroutine create_cbmesh
 
@@ -666,8 +683,8 @@ contains
 !-----------------------------------------------------------------------------------------
 !       Connectivity list
 !-----------------------------------------------------------------------------------------
-        write( gri % ID, 20 )
         nelem = cbmesh % nelem
+        write( gri % ID, 20 )
         do ielem = 1, nelem
             write( gri % ID, 210 ) ielem, &
                 & cbmesh % elset( ielem ), &
@@ -798,7 +815,7 @@ contains
 !-----------------------------------------------------------------------------------------
 330     format(&
             &'$===============================================',/&
-            &'   displ      Pl      Pg    temp    salt    chem',/&
+            &'$  displ      Pl      Pg    temp    salt    chem',/&
             &'$===============================================',/&
             & 6i8,/)
 !-----------------------------------------------------------------------------------------
@@ -870,6 +887,12 @@ contains
             &'$==========================================================================================================',/&
             &'  0.00000E+00 0.00000E+00 0.00000E+00 0.00000E+00 0.00000E+00 0.00000E+00 0.00000E+00 0.10000E+02       0',/)
 !-----------------------------------------------------------------------------------------
+440     format(&
+            &'$========================================================================',/&
+            &'$      time0       dtime       time1      dtimec       timef     facttime',/&
+            &'$========================================================================',/&
+            &' 0.00000E+00 0.00000E+00 0.00000E+00 0.00000E+00 0.00000E+00 0.000000E+00',/)
+!-----------------------------------------------------------------------------------------
 500     format(&
             &'X-dir_Force-Stress  0.0000E+00 Dfx_(ramp_loading) 0.0000E+00',/&
             &'Y-dir_Force-Stress  0.0000E+00 Dfy_(ramp_loading) 0.0000E+00',/&
@@ -936,7 +959,7 @@ contains
 
         write( gen % ID, 310 ) 99999, 1, 0, &
             & param % ioptdispl * cbmesh % ndime + param % ioptpl + param % ioptpg + param % iopttemp, &
-            & 1, 6, 1, 0
+            & cbmesh % mnval, 6, 1, 0
 
         write( gen % ID, 320 ) mech_bc % nsets, flux_bc % nsets
 
@@ -994,6 +1017,11 @@ contains
         else
         end if
 
+!-----------------------------------------------------------------------------------------     
+!       Time Interval
+!-----------------------------------------------------------------------------------------
+        write( gen % ID, 440 )
+        
 !-----------------------------------------------------------------------------------------
 !       Material Properties
 !-----------------------------------------------------------------------------------------

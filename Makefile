@@ -36,7 +36,7 @@ CFLAGS = -fdefault-double-8 -fno-range-check -Wall
 # End of System Configuration Section
 # ===================================
 OBJS = precision_mod.o parameters_mod.o error_mod.o string_mod.o file_mod.o\
-       error_gmsh2cb_mod.o gmsh2cb_mod.o main.o
+       error_gmsh2cb_mod.o jacob_mod.o gmsh2cb_mod.o main.o
 
 # ** Rules **
 .PHONY: all
