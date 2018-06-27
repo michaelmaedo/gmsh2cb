@@ -5,7 +5,9 @@ module gmsh2cb_mod
     
     use file_mod, only: &
         & data_file, &
-        & get_record
+        & get_record, &
+        & open_file, &
+        & close_file
 
     use error_mod, only: &
         & error, &
@@ -17,6 +19,8 @@ module gmsh2cb_mod
     use error_gmsh2cb_mod
 
     use jacob_mod, only: check_jacob
+
+    use matprop_mod
     
 #include "utilities/error.fpp"
 
@@ -40,7 +44,6 @@ module gmsh2cb_mod
         integer(LONG) :: nnode !number of nodes
         integer(LONG) :: nelem !number of elements
         integer(LONG) :: ndime !number of spatial dimensions
-        integer(LONG) :: mnval !number of minimum gauss point per element
         integer(LONG), allocatable :: elset(:) !element sets
         integer(LONG), allocatable :: eltype(:) !element type
         integer(LONG), allocatable :: connec(:,:) !connectivity list
@@ -83,6 +86,8 @@ contains
         call write_grid( cbmesh, param, gri, err )
 
         call write_gen( cbmesh, param, matprop, mech_bc, flux_bc ,gen, err )
+
+        call write_matprop( param, matprop, err )
         
     end subroutine gmsh2cb
 
@@ -186,7 +191,6 @@ contains
         call malloc_matprop_and_bc( n, matprop, mech_bc, flux_bc, err )
         
         gmsh % ndime = 0
-        gmsh % mnval = 0
         do i = 1, n
             call get_record(msh, txt, ntxt, num, nnum, err)
             TEST( err )
@@ -340,7 +344,7 @@ contains
                 new_nelem = new_nelem + 1
                 gmsh % elset( new_nelem ) = matprop % set( loc_elset )
                 gmsh % connec( 1 : elnod, new_nelem ) = gmsh % connec( 1 : elnod, ielem )
-                call set_element_type(loc_eltype, gmsh % eltype( new_nelem ), gmsh % mnval, err )
+                call set_element_type(loc_eltype, gmsh % eltype( new_nelem ), err )
             end if
             
         end do
@@ -420,34 +424,29 @@ contains
     end subroutine malloc_physical
 
 
-    subroutine set_element_type( gmsh_eltype, cb_eltype, mnval, err )
+    subroutine set_element_type( gmsh_eltype, cb_eltype, err )
         integer(LONG), intent(in) :: gmsh_eltype
         type(error), intent(inout) :: err
-        integer(LONG), intent(out) :: cb_eltype, mnval
+        integer(LONG), intent(out) :: cb_eltype
 
-        integer(LONG) :: nval
-        
         select case(gmsh_eltype)
         case (1)
-            cb_eltype = 8; nval = 1
+            cb_eltype = 8
         case (2)
-            cb_eltype = 1; nval = 1
+            cb_eltype = 1
         case (3)
-            cb_eltype = 5; nval = 4
+            cb_eltype = 5
         case (4)
-            cb_eltype = 1; nval = 1
+            cb_eltype = 1
         case (5)
-            cb_eltype = 3; nval = 8
+            cb_eltype = 3
         case (6)
-            cb_eltype = 26; nval = 2
+            cb_eltype = 26
         case (9)
-            cb_eltype = 12; nval = 2
+            cb_eltype = 12
         case default
             RAISE( ERROR_INVALID_ELEMENT, err )
         end select
-        if ( nval > mnval ) mnval = nval
-
-        return
     end subroutine set_element_type
     
 
@@ -548,8 +547,7 @@ contains
         cbmesh % nnode = gmsh % nnode
         cbmesh % nelem = new_nelem
         cbmesh % ndime = gmsh % ndime
-        cbmesh % mnval = gmsh % mnval
-        
+
         allocate( cbmesh % coord( gmsh % ndime, gmsh % nnode ) , stat = info )
         allocate( cbmesh % bcond( 2, gmsh % nnode ) , stat = info )
         allocate( cbmesh % connec( MAX_NODES, new_nelem ) , stat = info )
@@ -959,7 +957,7 @@ contains
 
         write( gen % ID, 310 ) 99999, 1, 0, &
             & param % ioptdispl * cbmesh % ndime + param % ioptpl + param % ioptpg + param % iopttemp, &
-            & cbmesh % mnval, 6, 1, 0
+            & 1, 6, 1, 0
 
         write( gen % ID, 320 ) mech_bc % nsets, flux_bc % nsets
 
@@ -1057,4 +1055,35 @@ contains
         
     end subroutine write_gen
 
+
+    subroutine write_matprop( param, matprop, err )
+        type(control), intent(in) :: param
+        type(physical), intent(in) :: matprop
+        type(error), intent(inout) :: err
+        type( data_file ) :: tmp
+        integer(LONG) :: i, fid
+
+700     format('   -1')
+        
+        do i = 1, matprop % nsets
+            call open_file(trim( matprop % name( i ) ), tmp, 'OUTPUT', err)
+
+            fid = tmp % ID
+            call write_mech( fid, trim( matprop % name( i ) ) )
+            ! if ( param % ioptpl == 1 ) then
+            !     call write_hydro( fid )
+            !     if ( i == 1 ) call write_liquid_prop( fid )
+            ! end if
+
+            ! if ( param % ioptpg == 1 ) then
+            !     call write_hydro( fid )
+            !     if ( i == 1 ) call write_gas_prop( fid )
+            ! end if
+            write(fid,700)            
+            call close_file( tmp )
+        end do
+        
+    end subroutine write_matprop
+
+    
 end module gmsh2cb_mod

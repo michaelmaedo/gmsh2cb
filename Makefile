@@ -18,7 +18,7 @@ SHELL = /bin/sh
 VPATH = src:src/utilities
 
 # ** Compiler **
-FC = gfortran -cpp -finit-local-zero -fmax-stack-var-size=30000 -O3 -std=f2003 -Wall
+FC = gfortran -cpp -finit-local-zero -fmax-stack-var-size=30000 -O3 -std=f2003 -Wall -Wno-unused-variable -Wno-unused-dummy-argument
 
 # ** Libraries **
 #LIBS = -lblas
@@ -36,7 +36,7 @@ CFLAGS = -fdefault-double-8 -fno-range-check -Wall
 # End of System Configuration Section
 # ===================================
 OBJS = precision_mod.o parameters_mod.o error_mod.o string_mod.o file_mod.o\
-       error_gmsh2cb_mod.o jacob_mod.o gmsh2cb_mod.o main.o
+       matprop_mod.o error_gmsh2cb_mod.o jacob_mod.o gmsh2cb_mod.o main.o
 
 # ** Rules **
 .PHONY: all
