@@ -1,3 +1,8 @@
+!
+! Copyright (C) 2017-2018 - Michael Maedo (michaelmaedo@gmail.com)
+!
+! This code is licenced under the GPL.
+!
 module gmsh2cb_mod
 
     use precision_mod, only: LONG, DOUBLE
