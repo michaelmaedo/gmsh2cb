@@ -124,8 +124,7 @@ contains
             & ' n(2)                      0.0 l(1)                      0.0'/&
             & ' n(3)                      1.0 l(2)                      1.0'/&
             & ' s(1)                      1.0 l(3)                      0.0'/&
-            & ' s(2)                      0.0 void               0.0000E+00'/&             
-            &)
+            & ' s(2)                      0.0 void               0.0000E+00')             
         write(fileID,60)
     end subroutine write_damage
 
@@ -153,7 +152,7 @@ contains
             & ' dtime_max_(s)          1.0E-6 void               0.0000E+00'/&
             & ' void               0.0000E+00 void               0.0000E+00'/&
             & ' void               0.0000E+00 void               0.0000E+00'/&
-            & ' void               0.0000E+00 void               0.0000E+00'/&
+            & ' void               0.0000E+00 void               0.0000E+00'&
             &)
         write(fileID,80)
     end subroutine write_drucker_prager
@@ -168,29 +167,35 @@ contains
 !     end subroutine write_homog
 
 
-    subroutine write_hydro( fileID )
-        integer :: fileID
+    subroutine write_hydro( fileID, ioptpl, ioptpg )
+        integer, intent(in) :: fileID, ioptpl, ioptpg
 110     format(&
             & '    7 Intrinsic_Permeab.     1'/&
             & ' k11O_(m2)             2.0E-16 beta(arg._koz)     0.0000E+00'/&
             & ' k22O_(m2)             2.0E-16 osm_eff            0.0000E+00'/&
             & ' k33O_(m2)             2.0E-16 void               0.0000E+00'/&
             & ' phi0               0.0000E+00 void               0.0000E+00'/&
-            & ' phimin             0.0000E+00 void               0.0000E+00'/&
+            & ' phimin             0.0000E+00 void               0.0000E+00')
+111     format(&
             & '   14 Liquid_rel.permeab.    6'/&
             & ' void               0.0000E+00 void               0.0000E+00'/&
             & ' A                         1.0 void               0.0000E+00'/&
             & ' lambda                    3.0 void               0.0000E+00'/&
             & ' Srl                 0.000E+00 void               0.0000E+00'/&
-            & ' Sls                 0.000E+00 void               0.0000E+00'/&
+            & ' Sls                 0.000E+00 void               0.0000E+00')
+112     format(&
             & '   19 Gas_rel.permeab.       1'/&
             & ' void               0.0000E+00 void               0.0000E+00'/&
             & ' A                  0.0000E+00 void               0.0000E+00'/&
             & ' lambda             0.0000E+00 void               0.0000E+00'/&
             & ' Srg                0.0000E+00 void               0.0000E+00'/&
-            & ' Sgs                0.0000E+00 void               0.0000E+00'/&            
+            & ' Sgs                0.0000E+00 void               0.0000E+00'&            
             &)
-        write(fileID,110)
+
+        if ( ioptpl == 1 .or. ioptpg == 1 ) write(fileID,110)
+        if ( ioptpl == 1 ) write(fileID,111)
+        if ( ioptpg == 1 ) write(fileID,112)
+        if ( ioptpl == 1 .and. ioptpg == 1 ) call write_unsat( fileID )
     end subroutine write_hydro
 
     
@@ -220,7 +225,7 @@ contains
             & ' dt_liquid_(m)      0.0000E+00 dt_vapor_(m)       0.0000E+00'/&
             & ' void               0.0000E+00 void               0.0000E+00'/&
             & ' dl_heat_(m)        0.0000E+00 void               0.0000E+00'/&
-            & ' dt_heat_(m)        0.0000E+00 void               0.0000E+00'/&
+            & ' dt_heat_(m)        0.0000E+00 void               0.0000E+00'&
             &)
         write(fileID,120) 
     end subroutine write_unsat
@@ -234,7 +239,7 @@ contains
             & ' rhos0_(kg-m3)            2770 betas_(MPa^-1)            0.0'/&
             & ' alphas_(oC^-1)        7.8E-06 p0_(MPa)                  0.1'/&
             & ' T0_(oC)                    40 BodyForce_0               0.0'/&
-            & ' alphabiot                0.75 BodyForce_f               0.0'/&
+            & ' alphabiot                0.75 BodyForce_f               0.0'&
             &)
         write(fileID,130)
     end subroutine write_solid_prop
@@ -254,7 +259,7 @@ contains
             & ' B_(K)                  1808.5 void               0.0000E+00'/&
             & ' void               0.0000E+00 void               0.0000E+00'/&
             & ' void               0.0000E+00 void               0.0000E+00'/&
-            & ' void               0.0000E+00 void               0.0000E+00'/&
+            & ' void               0.0000E+00 void               0.0000E+00'&
             &)
             write(fileID,140)
     end subroutine write_liquid_prop
@@ -263,24 +268,24 @@ contains
     subroutine write_gas_prop( fileID )
         integer :: fileID
 150      format(&
-             & '   17 Dry_air_density       1'/&
-             & ' rhog0_(kg-m3)            0.1 P6                 0.0000E+00'/&
-             & ' betag_(MPa^-1)            10 P7                 0.0000E+00'/&
-             & ' alphag_(oC^-1)    0.0000E+00 P8                 0.0000E+00'/&
-             & ' void              0.0000E+00 P9                 0.0000E+00'/&
-             & ' Pg0_(MPa)         0.0000E+00 P10                0.0000E+00'/&
-             & '   18 Gas_viscosity         1'/&
-             & ' A_(MPa.s)           1.48E-12 void               0.0000E+00'/&
-             & ' B_(oC)                 119.4 void               0.0000E+00'/&
-             & ' C                       0.14 void               0.0000E+00'/&
-             & ' D                    1.2E+15 void               0.0000E+00'/&
-             & ' void              0.0000E+00 void               0.0000E+00'/&
+             & '   17 Dry_air_density        1'/&
+             & ' rhog0_(kg-m3)             0.1 P6                 0.0000E+00'/&
+             & ' betag_(MPa^-1)             10 P7                 0.0000E+00'/&
+             & ' alphag_(oC^-1)     0.0000E+00 P8                 0.0000E+00'/&
+             & ' void               0.0000E+00 P9                 0.0000E+00'/&
+             & ' Pg0_(MPa)          0.0000E+00 P10                0.0000E+00'/&
+             & '   18 Gas_viscosity          1'/&
+             & ' A_(MPa.s)            1.48E-12 void               0.0000E+00'/&
+             & ' B_(oC)                  119.4 void               0.0000E+00'/&
+             & ' C                        0.14 void               0.0000E+00'/&
+             & ' D                     1.2E+15 void               0.0000E+00'/&
+             & ' void               0.0000E+00 void               0.0000E+00'&
              &)
         write(fileID,150)
     end subroutine write_gas_prop
 
     
-    subroutine write_thermal_prop( fileID )
+    subroutine write_thermal_cond( fileID )
         integer :: fileID
 160     format(&
             & '    9 Conduct.Heat_flux_1    1'/&
@@ -294,9 +299,9 @@ contains
             & ' void               0.0000E+00 void               0.0000E+00'/&
             & ' void               0.0000E+00 void               0.0000E+00'/&
             & ' void               0.0000E+00 void               0.0000E+00'/&
-            & ' void               0.0000E+00 void               0.0000E+00'/&
+            & ' void               0.0000E+00 void               0.0000E+00'&
             &)
         write(fileID,160)
-    end subroutine write_thermal_prop
+    end subroutine write_thermal_cond
         
 end module matprop_mod

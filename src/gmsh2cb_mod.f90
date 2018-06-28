@@ -5,7 +5,8 @@
 !
 module gmsh2cb_mod
 
-    use precision_mod, only: LONG, DOUBLE
+    use parameters_mod, only: ZERO, ONE, TEN
+    use precision_mod, only: LONG, double
     use string_mod, only: LEN_STR, strcmp
     
     use file_mod, only: &
@@ -43,6 +44,7 @@ module gmsh2cb_mod
         integer(LONG) :: ioptdispl
         integer(LONG) :: reord
         integer(LONG) :: version
+        integer(LONG) :: comment
     end type control
     
     type mesh
@@ -465,6 +467,7 @@ contains
         param % ioptdispl = 0
         param % reord = 0
         param % unsat = 0
+        param % comment = 0
         param % version = -999
         
     end subroutine set_control_param
@@ -492,6 +495,12 @@ contains
             param % ioptpl = 0
             param % iopttemp = 1
         end if
+
+        if (strcmp(loc_str,'COMMENT') == 0 .or. &
+            & strcmp(loc_str,'$') == 0) then
+            param % comment = 1
+        end if
+
         
         if (strcmp(loc_str,'THERMO') == 0 .or. &
             & strcmp(loc_str,'T') == 0) then
@@ -597,7 +606,7 @@ contains
             &'$     Node             Coords_X             Coords_Y   Mech_BC   Flux_BC',/&
             &'$=======================================================================')
 !-----------------------------------------------------------------------------------------
-20      format(&
+20      format(/&
             &'$=============================================================================================================',/&
             &'$  Element    El.Type    Mat.Prop                                   Connectivities                            ',/&
             &'$=============================================================================================================')
@@ -654,12 +663,21 @@ contains
             &'         0',/&
             &'         0',/&
             &'         0')
+!-----------------------------------------------------------------------------------------
+201     format(&
+            &'         0',/&
+            &'         0',/&
+            &'         0',/&
+            &'         0',/&
+            &'         0',/&
+            &'         0',/&
+            &'         0')
             
 !-----------------------------------------------------------------------------------------
 210     format(11i10)
 !-----------------------------------------------------------------------------------------
         
-        write( gri % ID, fmt = * ) 0, 0, 0
+        write( gri % ID, fmt = '(3i5)' ) 0, 0, 0
         
         ncond = 2
         ndime = cbmesh % ndime
@@ -675,68 +693,73 @@ contains
             ifmt = '(i10,3(" ", e20.13),2i10)'
         end if
         
-        write( gri % ID, 10 )
+        if (param % comment == 1) write( gri % ID, 10 )
         do inode = 1, nnode
             write( gri % ID, ifmt) inode, &
                 & ( cbmesh % coord( idime, inode ), idime = 1, ndime ), &
                 & ( cbmesh % bcond( icond, inode ), icond = 1, 2 )
         end do
-        write( gri % ID, * )
         
 !-----------------------------------------------------------------------------------------
 !       Connectivity list
 !-----------------------------------------------------------------------------------------
         nelem = cbmesh % nelem
-        write( gri % ID, 20 )
+        if (param % comment == 1) write( gri % ID, 20 )
         do ielem = 1, nelem
             write( gri % ID, 210 ) ielem, &
                 & cbmesh % elset( ielem ), &
                 & cbmesh % eltype( ielem ), &
                 & ( cbmesh % connec( inode, ielem ), inode = 1, MAX_NODES )
         end do
-        write( gri % ID, * )
         
 !-----------------------------------------------------------------------------------------
 !       Initial Unknown
 !-----------------------------------------------------------------------------------------
 
-        str = ''
         ndf = param % ioptdispl * ndime + &
             & param % ioptpl + param % ioptpg + param % iopttemp
-        str = repeat('===============',ndf)
-        str = '$========='//trim(str)
-        
-        write( gri % ID, '(A)' ) str
-        write( gri % ID, 30, advance = 'no' )
-        if ( param % ioptdispl == 1 ) then
 
-            write( gri % ID, 40, advance = 'no' )
-            if ( ndime > 1 )  write( gri % ID, 50, advance = 'no' )
-            if ( ndime == 3 ) write( gri % ID, 60, advance = 'no' )
+        if ( param % comment == 1 ) then
 
+            write( gri % ID, * )
+
+            str = ''
+            str = repeat('===============',ndf)
+            str = '$========='//trim(str)
+
+            write( gri % ID, '(A)' ) str
+            write( gri % ID, 30, advance = 'no' )
+            if ( param % ioptdispl == 1 ) then
+
+                write( gri % ID, 40, advance = 'no' )
+                if ( ndime > 1 )  write( gri % ID, 50, advance = 'no' )
+                if ( ndime == 3 ) write( gri % ID, 60, advance = 'no' )
+                
+            end if
+
+            if ( param % ioptpl == 1 )   write( gri % ID, 70, advance = 'no')
+            if ( param % ioptpg == 1 )   write( gri % ID, 80, advance = 'no')
+            if ( param % iopttemp == 1 ) write( gri % ID, 90, advance = 'no')
+            write( gri % ID, * )
+            write( gri % ID, '(A)' ) str
         end if
-
-        if ( param % ioptpl == 1 )   write( gri % ID, 70, advance = 'no')
-        if ( param % ioptpg == 1 )   write( gri % ID, 80, advance = 'no')
-        if ( param % iopttemp == 1 ) write( gri % ID, 90, advance = 'no')
-        write( gri % ID, * )
-        write( gri % ID, '(A)' ) str
 
         ifmt = ''; str = ''
         str = repeat(' 0.000000000000',ndf)
         write ( gri % ID, '(i10,A)')     1, str 
         write ( gri % ID, '(i10,A)') nnode, str 
-        write( gri % ID, * )
 
 !-----------------------------------------------------------------------------------------
 !       Initial Stresses and Historical Variables
 !-----------------------------------------------------------------------------------------
         if ( param % ioptdispl == 1 ) then
+            if ( param % comment == 1 ) then
+                write( gri % ID, * )
+                write( gri % ID, 100 )
+            end if
             str = repeat(' 0.000000000000',6)
-            write( gri % ID, 100 )
             write( gri % ID, '(i10,A)' )     1, str
             write( gri % ID, '(i10,A)' ) nelem, str
-            write( gri % ID, * )
         end if
         
 !-----------------------------------------------------------------------------------------
@@ -749,38 +772,47 @@ contains
             if ( ndime == 3 ) nvar = nvar + 5
         end if
 
-        str = ''
-        str = repeat('===============',nvar)
-        str = '$========='//trim(str)
-        write( gri % ID, '(A)') str
+        if ( param % comment == 1 ) then
         
-        write( gri % ID, 110, advance = 'no')
-        if ( param % ioptpl == 1 .or. param % ioptpg == 1 ) then
-            write( gri % ID, 120, advance = 'no')
-            if ( ndime == 2) then
-                write( gri % ID, 130, advance = 'no')
-                write( gri % ID, 150, advance = 'no')
-            else if ( ndime == 3 ) then
-                write( gri % ID, 130, advance = 'no')
-                write( gri % ID, 140, advance = 'no')
-                write( gri % ID, 150, advance = 'no')
-                write( gri % ID, 160, advance = 'no')
-                write( gri % ID, 170, advance = 'no')
+            write( gri % ID, * )
+        
+            str = ''
+            str = repeat('===============',nvar)
+            str = '$========='//trim(str)
+            write( gri % ID, '(A)') str
+        
+            write( gri % ID, 110, advance = 'no')
+            if ( param % ioptpl == 1 .or. param % ioptpg == 1 ) then
+                write( gri % ID, 120, advance = 'no')
+                if ( ndime == 2) then
+                    write( gri % ID, 130, advance = 'no')
+                    write( gri % ID, 150, advance = 'no')
+                else if ( ndime == 3 ) then
+                    write( gri % ID, 130, advance = 'no')
+                    write( gri % ID, 140, advance = 'no')
+                    write( gri % ID, 150, advance = 'no')
+                    write( gri % ID, 160, advance = 'no')
+                    write( gri % ID, 170, advance = 'no')
+                end if
             end if
+            write( gri % ID, 180)
+            write( gri % ID, '(A)') str
         end if
-        write( gri % ID, 180)
-        write( gri % ID, '(A)') str
 
         str = ''
         str = repeat(' 0.000000000000', nvar)
         write( gri % ID, '(i10,A)' )     1, str
         write( gri % ID, '(i10,A)' ) nelem, str
-        write( gri % ID, * )
 
 !-----------------------------------------------------------------------------------------
 !       Plots       
 !-----------------------------------------------------------------------------------------
-        write( gri % ID, 200 )
+        if ( param % comment == 1 ) then
+            write( gri % ID, * )
+            write( gri % ID, 200 )
+        else
+            write( gri % ID, 201 )
+        end if
         
     end subroutine write_grid
 
@@ -798,103 +830,63 @@ contains
         integer :: i
         
 !-----------------------------------------------------------------------------------------
-300     format(&
-            &'$=======================================================================',/&
-            &'$  numnp   numel    ndim   axisym   nmat  nhistvar  igauss  exterf  frac',/&
-            &'$=======================================================================',/&
-            & 9i8,/)       
+300     format(/&
+            &'$   numnp   numel   ndim  axisym    nmat  nhistvar  igauss  exterf   frac')
 !-----------------------------------------------------------------------------------------
-310     format(&
-            &'$=================================================================',/&
-            &'$ mxdifn  mbandt   mfronth   ndf   mnval  isolve  ioptconv  ioptth',/&
-            &'$=================================================================',/&
-            & 8i8,/)
+310     format(/&
+            &'$ mxdifn  mbandt   mfronth   ndf   mnval  isolve  ioptconv  ioptth')
 !-----------------------------------------------------------------------------------------
-320     format(&
-            &'$===================',/&
-            &'$ nfdtype  nfluxtype',/&
-            &'$===================',/&
-            & 2i8,/)
+320     format(/&
+            &'$ nfdtype  nfluxtype')
 !-----------------------------------------------------------------------------------------
-330     format(&
-            &'$===============================================',/&
-            &'$  displ      Pl      Pg    temp    salt    chem',/&
-            &'$===============================================',/&
-            & 6i8,/)
+330     format(/&
+            &'$  displ      Pl      Pg    temp    salt    chem')
 !-----------------------------------------------------------------------------------------
-340     format(&
-            &'$==================================================================',/&
-            &'$ ioptxhl  updpor  ioptxwg ioptxal  ioptpc  iopthys  iupdc  iopthom',/&
-            &'$==================================================================',/&
-            & 8i8,/)
+340     format(/&
+            &'$ ioptxhl  updpor  ioptxwg ioptxal  ioptpc  iopthys  iupdc  iopthom')
 !-----------------------------------------------------------------------------------------
-350     format(&
-            &'$===============================================',/&
+350     format(/&
             &'$  flag1   flag2   flag3   flag4   flag5   flag6',/&
-            &'$===============================================',/&
             &'       0       0       0       0       0       0',/&
             &'',/&      
-            &'$===========================================================',/&
             &'$    epsilon       theta     pg_cons   temp_cons     pl_cons',/&
-            &'$===========================================================',/&
             &' 0.10000E+01 0.10000E+01 0.00000E+00 0.20000E+02 0.00000E+00',/&
-            &'',//&
-            &'$========================================================================',/&
+            &'',/&
             &'$      time0       dtime       time1      dtimec       timef     facttime',/&
-            &'$========================================================================',/&
             &' 0.00000E+00 0.00000E+00 0.00000E+00 0.00000E+00 0.00000E+00 0.000000E+00',/&
             &'',/&
-            &'$==========================================================',/&
             &'$  iowit stepspos itermax  typost  itermax  itime   iteropt',/&
-            &'$==========================================================',/&
-            &'       1      50      25       1       0       0       0',/&
-            &)
+            &'       1      50      25       1       0       0       0')
 !-----------------------------------------------------------------------------------------
-360     format(&
-            &'$===========================================================',/&
-            &'$     delmxu        facu      delfmx        dumx     fdtimeu',/&
-            &'$===========================================================')
+351     format(&
+            &'       0       0       0       0       0       0',/&
+            &' 0.10000E+01 0.10000E+01 0.00000E+00 0.20000E+02 0.00000E+00',/&
+            &' 0.00000E+00 0.00000E+00 0.00000E+00 0.00000E+00 0.00000E+00 0.000000E+00',/&
+            &'       1      50      25       1       0       0       0')
 !-----------------------------------------------------------------------------------------
-370     format(&
-            &'$===========================================================',/&
-            &'$    delmxpl       facpl     delqwmx       dplmx    fdtimepl',/&
-            &'$===========================================================')
+360     format(/&
+            &'$     delmxu        facu      delfmx        dumx     fdtimeu')
 !-----------------------------------------------------------------------------------------
-380     format(&
-            &'$===========================================================',/&
-            &'$    delmxpg       facpg     delqgmx       dpgmx    fdtimepg',/&
-            &'$===========================================================')
+370     format(/&
+            &'$    delmxpl       facpl     delqwmx       dplmx    fdtimepl')
 !-----------------------------------------------------------------------------------------
-390     format(&
-            &'$===========================================================',/&
-            &'$     delmxt        fact      delemx        dtmx     fdtimet',/&
-            &'$===========================================================')
+380     format(/&
+            &'$    delmxpg       facpg     delqgmx       dpgmx    fdtimepg')
 !-----------------------------------------------------------------------------------------
-400     format(' 1.00000e-04 1.00000e+00 1.00000e-04 1.00000e+06 0.00000e+00',/)
+390     format(/&
+            &'$     delmxt        fact      delemx        dtmx     fdtimet')
 !-----------------------------------------------------------------------------------------
-410     format('   -1',/&
-            &'$==========================================================',/&
-            &'$    GX(m/s2)   GY(MN/kg)  Grav_time0  Grav_timef  ioptmech',/&
-            &'$==========================================================',/&
-            &'  0.00000E+00 0.00000E+00 0.00000E+00 0.10000E+02       0',/)
+410     format(/&
+            &'$    GX(m/s2)   GY(MN/kg)  Grav_time0  Grav_timef  ioptmech')
 !-----------------------------------------------------------------------------------------
-420     format('   -1',/&
-            &'$==================================================================================',/&
-            &'$    GX(m/s2)    GY(m/s2)   GX(MN/kg)   GY(MN/kg)  Grav_time0  Grav_timef  ioptmech',/&
-            &'$==================================================================================',/&
-            &'  0.00000E+00 0.00000E+00 0.00000E+00 0.00000E+00 0.00000E+00 0.10000E+02       0',/)
+420     format(/&
+            &'$   GX(m/s2)    GY(m/s2)   GX(MN/kg)   GY(MN/kg)  Grav_time0  Grav_timef  ioptmech')
 !-----------------------------------------------------------------------------------------
-430     format('   -1',/&
-            &'$==========================================================================================================',/&
-            &'$    GX(m/s2)    GY(m/s2)    GZ(m/s2)   GX(MN/kg)   GY(MN/kg)   GZ(MN/kg)  Grav_time0  Grav_timef  ioptmech',/&
-            &'$==========================================================================================================',/&
-            &'  0.00000E+00 0.00000E+00 0.00000E+00 0.00000E+00 0.00000E+00 0.00000E+00 0.00000E+00 0.10000E+02       0',/)
+430     format(/&
+            &'$   GX(m/s2)    GY(m/s2)    GZ(m/s2)   GX(MN/kg)   GY(MN/kg)   GZ(MN/kg)  Grav_time0  Grav_timef  ioptmech')
 !-----------------------------------------------------------------------------------------
-440     format(&
-            &'$========================================================================',/&
-            &'$      time0       dtime       time1      dtimec       timef     facttime',/&
-            &'$========================================================================',/&
-            &' 0.00000E+00 0.00000E+00 0.00000E+00 0.00000E+00 0.00000E+00 0.000000E+00',/)
+440     format(/&
+            &'$     time0       dtime       time1      dtimec       timef     facttime')
 !-----------------------------------------------------------------------------------------
 500     format(&
             &'X-dir_Force-Stress  0.0000E+00 Dfx_(ramp_loading) 0.0000E+00',/&
@@ -928,26 +920,26 @@ contains
         &)
 !-----------------------------------------------------------------------------------------
 600     format(&
-            &'-humidity(Kg-Kg)     0.000E+00 void               0.0000E+00',/& 
-            &'-gas_flow(Kg-s)      0.000E+00 void               0.0000E+00',/& 
-            &'-gas_pressure(MPa)   0.000E+00 DPress.gas(MPa)    0.0000E+00',/&
-            &'-gas_gamma           0.000E+00 void               0.0000E+00',/&
-            &'-gas_beta            0.000E+00 void               0.0000E+00',/& 
-            &'-gas_density(Kg-m3)  0.000E+00 void               0.0000E+00',/& 
-            &'-salt_conc.(Kg-Kg)   0.000E+00 void               0.0000E+00',/& 
-            &'-air_conc.(Kg-Kg)    0.000E+00 void               0.0000E+00',/& 
-            &'-liquid_flow(Kg-s)   0.000E+00 void               0.0000E+00',/&
-            &'-liquid_pres(MPa)        -59.0 DPress.liq.(MPa)   0.0000E+00',/& 
-            &'-liquid_gamma         5.75e+12 void               0.0000E+00',/&
-            &'-liquid_beta         0.000E+00 void               0.0000E+00',/& 
-            &'-liquid_dens.(Kg-m3) 0.000E+00 void               0.0000E+00',/& 
-            &'-heat_flow(J-s)      0.000E+00 void               0.0000E+00',/& 
-            &'-temperature(C)           25.0 DTemp.(C)          0.0000E+00',/& 
-            &'-heat_gamma(J-s-C)       1.e12 void               0.0000E+00',/& 
-            &'-decay_heat(1-s)     0.000E+00 void               0.0000E+00',/& 
-            &'-tot.vol.flow(m3-s)  0.000E+00 void               0.0000E+00',/& 
-            &'-smoothing_param.    0.000E+00 void               0.0000E+00',/& 
-            &'-index                1.00E+00 void               0.0000E+00'&
+            &'-humidity(Kg-Kg)    0.0000E+00 void               0.0000E+00',/& 
+            &'-gas_flow(Kg-s)     0.0000E+00 void               0.0000E+00',/& 
+            &'-gas_pressure(MPa)  0.0000E+00 DPress.gas(MPa)    0.0000E+00',/&
+            &'-gas_gamma          0.0000E+00 void               0.0000E+00',/&
+            &'-gas_beta           0.0000E+00 void               0.0000E+00',/& 
+            &'-gas_density(Kg-m3) 0.0000E+00 void               0.0000E+00',/& 
+            &'-salt_conc.(Kg-Kg)  0.0000E+00 void               0.0000E+00',/& 
+            &'-air_conc.(Kg-Kg)   0.0000E+00 void               0.0000E+00',/& 
+            &'-liq_flow(Kg-s)     0.0000E+00 void               0.0000E+00',/&
+            &'-liq_pres(MPa)      0.0000E+00 DPress.liq.(MPa)   0.0000E+00',/& 
+            &'-liq_gamma          0.0000E+00 void               0.0000E+00',/&
+            &'-liq_beta           0.0000E+00 void               0.0000E+00',/& 
+            &'-liq_density(Kg-m3) 0.0000E+00 void               0.0000E+00',/& 
+            &'-heat_flow(J-s)     0.0000E+00 void               0.0000E+00',/& 
+            &'-temperature(C)     0.0000E+00 DTemp.(C)          0.0000E+00',/& 
+            &'-heat_gamma(J-s-C)  0.0000E+00 void               0.0000E+00',/& 
+            &'-decay_heat(1-s)    0.0000E+00 void               0.0000E+00',/& 
+            &'-tot.vol.flow(m3-s) 0.0000E+00 void               0.0000E+00',/& 
+            &'-smoothing_param.   0.0000E+00 void               0.0000E+00',/& 
+            &'-index              0.1000E+01 void               0.0000E+00'&
             &)
 !-----------------------------------------------------------------------------------------
 !       Control Parameters        
@@ -955,30 +947,38 @@ contains
 
         write( gen % ID, * ) ' Gen file created by means of gmsh and gmsh2cb'
         write( gen % ID, * ) param % version
-        write( gen % ID, * )
-        
-        write( gen % ID, 300 ) cbmesh % nnode, cbmesh % nelem, cbmesh % ndime, &
+
+        if ( param % comment == 1 ) write( gen % ID, 300 )
+        write( gen % ID, fmt='(9(" ",i7))' ) cbmesh % nnode, cbmesh % nelem, cbmesh % ndime, &
             & 0, matprop % nsets, 185, 0, 0, 0
 
-        write( gen % ID, 310 ) 99999, 1, 0, &
+        if ( param % comment == 1 ) write( gen % ID, 310 )
+        write( gen % ID, fmt='(8(" ",i7))' ) 99999, 1, 0, &
             & param % ioptdispl * cbmesh % ndime + param % ioptpl + param % ioptpg + param % iopttemp, &
             & 1, 6, 1, 0
 
-        write( gen % ID, 320 ) mech_bc % nsets, flux_bc % nsets
+        if ( param % comment == 1 ) write( gen % ID, 320 )
+        write( gen % ID, fmt='(2(" ",i7))' ) mech_bc % nsets, flux_bc % nsets
 
-        write( gen % ID, 330 ) param % ioptdispl, &
+        if ( param % comment == 1 ) write( gen % ID, 330 )
+        write( gen % ID, fmt='(6(" ",i7))' ) param % ioptdispl, &
             & param % ioptpl, &
             & param % ioptpg, &
             & param % iopttemp, &
             & 0, 0
 
+        if ( param % comment == 1 ) write( gen % ID, 340 )
         if (param % unsat == 1) then
-            write( gen % ID, 340 ) 0, 0, 0, 0, -1, 0, 0, 0 
+            write( gen % ID, fmt ='(8(" ",i7))' ) 0, 0, 0, 0, -1, 0, 0, 0 
         else
-            write( gen % ID, 340 ) 0, 0, 1, 1, -1, 0, 0, 0
+            write( gen % ID, fmt ='(8(" ",i7))' ) 0, 0, 1, 1, -1, 0, 0, 0
         end if
 
-        write( gen % ID, 350 )
+        if ( param % comment == 1 ) then
+            write( gen % ID, 350 )
+        else
+            write( gen % ID, 351 )
+        end if
         
 !-----------------------------------------------------------------------------------------
 !       Convergence parameters
@@ -986,54 +986,69 @@ contains
 !
 !       Displacement        
         if (param % ioptdispl == 1) then
-            write( gen % ID, 360 )
-            write( gen % ID, 400 )
+            if (param % comment == 1 ) write( gen % ID, 360 )
+            write( gen % ID, fmt='(5(" ",e11.5))' ) 1.0D-04, 1.0D+00, 1.0D-04, 1.0D+06, 0.0D+00
         end if
 !
 !       Liquid Pressure        
         if (param % ioptpl == 1) then
-            write( gen % ID, 370 )
-            write( gen % ID, 400 )
+            if (param % comment == 1 ) write( gen % ID, 370 )
+            write( gen % ID, fmt='(5(" ",e11.5))' ) 1.0D-04, 1.0D+00, 1.0D-04, 1.0D+06, 0.0D+00
         end if
 !
 !       Gas Pressure        
         if (param % ioptpg == 1) then
-            write( gen % ID, 380 )
-            write( gen % ID, 400 )
+            if (param % comment == 1 ) write( gen % ID, 380 )
+            write( gen % ID, fmt='(5(" ",e11.5))' ) 1.0D-04, 1.0D+00, 1.0D-04, 1.0D+06, 0.0D+00
         end if
 !
 !       Temperature        
         if (param % iopttemp == 1) then
-            write( gen % ID, 390 )
-            write( gen % ID, 400 )
+            if (param % comment == 1 ) write( gen % ID, 390 )
+            write( gen % ID, fmt='(5(" ",e11.5))' ) 1.0D-04, 1.0D+00, 1.0D-04, 1.0D+06, 0.0D+00
         end if
+
+        write( gen % ID, * )
+        write( gen % ID, fmt='(" ",i7)') -1
 !
 !-----------------------------------------------------------------------------------------     
 !       Gravity
 !-----------------------------------------------------------------------------------------
         if (cbmesh % ndime == 1) then
-            write( gen % ID, 410 )
+
+            if (param % comment == 1 ) write( gen % ID, 410 )
+            write( gen % ID, fmt='(4(" ",e11.5)," ",i7)' ) &
+                & -9.806, ZERO, ZERO, ONE, 0
+
         else if (cbmesh % ndime == 2) then
-            write( gen % ID, 420 )
+
+            if (param % comment == 1 ) write( gen % ID, 420 )
+            write( gen % ID, fmt='(6(" ",e11.5)," ",i7)' ) &
+                & ZERO, -9.806, ZERO, ZERO, ZERO, ONE, 0
+
         else if (cbmesh % ndime == 3) then
-            write( gen % ID, 430 )
+
+            if (param % comment == 1 ) write( gen % ID, 430 )
+            write( gen % ID, fmt='(8(" ",e11.5)," ",i7)' ) &
+                & ZERO, ZERO, -9.806, ZERO, ZERO, ZERO, ZERO, ONE, 0
+
         else
         end if
 
 !-----------------------------------------------------------------------------------------     
 !       Time Interval
 !-----------------------------------------------------------------------------------------
-        write( gen % ID, 440 )
-        
+        if ( param % comment == 1 ) write( gen % ID, 440 )
+        write( gen % ID, '(6(" ",e11.5))') ZERO, 1.0D-12, ONE, ONE, TEN, ONE
 !-----------------------------------------------------------------------------------------
 !       Material Properties
 !-----------------------------------------------------------------------------------------
         do i = 1, matprop % nsets
             write( gen % ID, fmt = '(A)', advance ='no' ) '*'
-            write( gen % ID, * ) i
+            write( gen % ID, fmt='(i7)' ) i
             write( gen % ID, * ) trim( matprop % name( i ) )
         end do
-        write( gen % ID, * ) -1
+        write( gen % ID, fmt='(" ",i7)' ) -1
 
 !-----------------------------------------------------------------------------------------
 !       Boundary Conditions
@@ -1041,21 +1056,22 @@ contains
 
         !Print mechanical boundary conditions
         do i = 1, mech_bc % nsets
-            write( gen % ID, * ) i, '       !.. ', trim( mech_bc % name( i ) )
+            write( gen % ID, fmt='(" ",i7,60x,A,A)' ) i, '!.. ', trim( mech_bc % name( i ) )
             if ( cbmesh % ndime == 2 ) then
                 write( gen % ID, 500 )
             else if ( cbmesh % ndime == 3 ) then
                 write( gen % ID, 510 )
             end if
         end do
-        write( gen % ID, * ) -1
+        write( gen % ID, fmt='(" ",i7)' ) -1
 
         !Print flux boundary conditions
         do i = 1, flux_bc % nsets
-            write( gen % ID, * ) i, '        !.. ', trim( flux_bc % name( i ) )
+            write( gen % ID, fmt='(" ",i7,60x,A,A)' ) i, '!.. ', trim( flux_bc % name( i ) )
             write( gen % ID, 600 )
         end do
-        write( gen % ID, * ) -1
+        write( gen % ID, fmt='(" ",i7)' ) -1
+        write( gen % ID, fmt='(" ",i7)' ) -1
 
         
     end subroutine write_gen
@@ -1071,21 +1087,24 @@ contains
 700     format('   -1')
         
         do i = 1, matprop % nsets
+
             call open_file(trim( matprop % name( i ) ), tmp, 'OUTPUT', err)
-
             fid = tmp % ID
+            
             call write_mech( fid, trim( matprop % name( i ) ) )
-            ! if ( param % ioptpl == 1 ) then
-            !     call write_hydro( fid )
-            !     if ( i == 1 ) call write_liquid_prop( fid )
-            ! end if
 
-            ! if ( param % ioptpg == 1 ) then
-            !     call write_hydro( fid )
-            !     if ( i == 1 ) call write_gas_prop( fid )
-            ! end if
+            if ( param % ioptpl == 1 .or. param % ioptpg == 1 ) &
+                & call write_hydro( fid, param % ioptpl, param % ioptpg )
+            
+            if ( param % iopttemp == 1 ) call write_thermal_cond( fid )
+
+            if ( param % ioptpl == 1 .and. i == 1 ) call write_liquid_prop( fid )
+
+            if ( param % ioptpg == 1 .and. i == 1 ) call write_gas_prop( fid )
+
             write(fid,700)            
             call close_file( tmp )
+            
         end do
         
     end subroutine write_matprop

@@ -44,6 +44,7 @@ program main
     implicit none
     
     type(data_file) :: msh
+    type(data_file) :: root
     type(data_file) :: gri
     type(data_file) :: gen
     type(data_file) :: log
@@ -92,45 +93,50 @@ program main
         ! write manual
     end if
        
-    call open_gmsh2cb_files(argv, msh, gen, gri, log, err)
+    call open_gmsh2cb_files(argv, msh, root, gen, gri, log, err)
 
+    write(root % ID, '(A)') trim(argv)
     if ( there_is_no_error( get_error_status( err ) ) ) &
-        call gmsh2cb(msh, gen, gri, log, param, err)
+        & call gmsh2cb(msh, gen, gri, log, param, err)
 
     call print_error( get_file_ID( log ), err)
     
-    call close_gmsh2cb_files(msh, gen, gri, log)
+    call close_gmsh2cb_files(msh, root, gen, gri, log)
 
     
 contains
 
     
-    subroutine open_gmsh2cb_files(filename, msh, gen, gri, log, err)
+    subroutine open_gmsh2cb_files(filename, msh, root, gen, gri, log, err)
         character(len = *), intent(in) :: filename
         type(error), intent(inout) :: err
         type(data_file), intent(out) :: msh 
         type(data_file), intent(out) :: gen
         type(data_file), intent(out) :: gri
         type(data_file), intent(out) :: log
+        type(data_file), intent(out) :: root
 
         call open_file(trim(filename)//'.msh', msh, 'INPUT', err)        
         call open_file(trim(filename)//'_gen.dat', gen, 'OUTPUT', err)
         call open_file(trim(filename)//'_gri.dat', gri, 'OUTPUT', err)
         call open_file(trim(filename)//'.log', log, 'OUTPUT', err)
+        call open_file('root.dat', root, 'OUTPUT', err)
         
     end subroutine open_gmsh2cb_files
 
 
-    subroutine close_gmsh2cb_files(msh, gen, gri, log)
+    subroutine close_gmsh2cb_files(msh, root, gen, gri, log)
         type(data_file), intent(inout) :: msh 
         type(data_file), intent(inout) :: gen
         type(data_file), intent(inout) :: gri
         type(data_file), intent(inout) :: log        
+        type(data_file), intent(inout) :: root
 
         call close_file( msh )
         call close_file( gen )
         call close_file( gri )
         call close_file( log )
+        call close_file( root )
     end subroutine close_gmsh2cb_files
     
 end program main
