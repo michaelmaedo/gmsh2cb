@@ -21,7 +21,8 @@ contains
         do iel = 1, numel
             
             lnod(:) = ZERO
-
+            vol = ZERO
+           
             if ( ndim == 2 ) then
             
                 select case( eltype(iel) )
@@ -34,12 +35,12 @@ contains
                 case ( 8 )
                     cycle
                 end select
-
+                    
                 lnod(1:nnel) = connec(1:nnel,iel) 
                 lnod(nnel+1) = connec(1,iel)
 
                 vol = area_2d( nnel, coord, connec, lnod )                
-
+                
             else if ( ndim == 3 ) then
 
                 select case( eltype(iel) )
@@ -55,7 +56,7 @@ contains
                 case ( 8 )
                     cycle
                 end select
-
+                
                 lnod(1:nnodside) = connec(1:nnodside,iel) 
                 lnod(nnodside+1) = connec(1,iel)
 
@@ -64,7 +65,7 @@ contains
                 
             end if
 
-            if ( vol < 0 ) then
+            if ( vol < 1e-30 ) then      
                 do inode = 1, nnel
                     connec(inode,iel) = lnod(nnel-(inode-1))
                 end do

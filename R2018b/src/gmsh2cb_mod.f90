@@ -89,7 +89,7 @@ contains
         call read_gmsh(msh, gmsh, matprop, mech_bc, flux_bc, new_nelem, bcond, err)
 
         call create_cbmesh(gmsh, new_nelem, bcond, cbmesh, err)
-
+        
         call write_grid( cbmesh, param, gri, err )
 
         call write_gen( cbmesh, param, matprop, mech_bc, flux_bc ,gen, err )
@@ -688,9 +688,9 @@ contains
 !-----------------------------------------------------------------------------------------
         ifmt = ''
         if ( ndime == 2 ) then
-            ifmt = '(i10,2(" ",e20.13),2i10)'
+            ifmt = '(i10,2(" ",e19.12),2i10)'
         else if ( ndime == 3 ) then
-            ifmt = '(i10,3(" ", e20.13),2i10)'
+            ifmt = '(i10,3(" ", e19.12),2i10)'
         end if
         
         if (param % comment == 1) write( gri % ID, 10 )
