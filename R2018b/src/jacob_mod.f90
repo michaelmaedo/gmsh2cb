@@ -20,7 +20,7 @@ contains
 
         do iel = 1, numel
             
-            lnod(:) = ZERO
+            lnod(:) = 0
 
             if ( ndim == 2 ) then
             
