@@ -18,7 +18,9 @@ SHELL = /bin/sh
 VPATH = src:src/utilities
 
 # ** Compiler **
-FC = gfortran -cpp -finit-local-zero -fmax-stack-var-size=30000 -O3 -std=f2003 -Wall -Wno-unused-variable -Wno-unused-dummy-argument
+FC = gfortran -cpp -finit-local-zero -fmax-stack-var-size=30000 -O3\
+	-std=f2003 -Wall -Wno-unused-variable -Wno-unused-dummy-argument\
+	-Wno-conversion
 
 # ** Libraries **
 #LIBS = -lblas

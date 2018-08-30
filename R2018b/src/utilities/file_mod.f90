@@ -251,7 +251,7 @@ contains
         if (present(delimiter)) then
             delim = delimiter
         else
-            delim = ' ":;,='//char(9)//char(11)
+            delim = ' ";,'//char(9)//char(11)
         end if
 !
 !       Check if 'comment' is present

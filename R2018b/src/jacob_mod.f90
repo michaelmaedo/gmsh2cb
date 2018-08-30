@@ -20,9 +20,9 @@ contains
 
         do iel = 1, numel
             
-            lnod(:) = ZERO
+            lnod(:) = 0
             vol = ZERO
-           
+
             if ( ndim == 2 ) then
             
                 select case( eltype(iel) )

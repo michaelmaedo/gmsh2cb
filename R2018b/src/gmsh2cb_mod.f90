@@ -391,7 +391,7 @@ contains
         logical :: ans
 
         ans = .false.
-        if (label == bc) ans = .true.
+        if (strcmp(label,bc) == 0) ans = .true.
     end function it_is_bc
     
     
@@ -697,7 +697,7 @@ contains
         do inode = 1, nnode
             write( gri % ID, ifmt) inode, &
                 & ( cbmesh % coord( idime, inode ), idime = 1, ndime ), &
-                & ( cbmesh % bcond( icond, inode ), icond = 1, 2 )
+                & ( cbmesh % bcond( icond, inode ), icond = 1, ncond )
         end do
         
 !-----------------------------------------------------------------------------------------
