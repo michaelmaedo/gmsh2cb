@@ -214,7 +214,7 @@ contains
             else if ( it_is_bc( label, 'FBC')  ) then
                 call set_physical( loc_ndime, loc_set, loc_name, flux_bc, err )
             else
-                call set_physical( loc_ndime, loc_set, loc_name, matprop, err )
+                call set_physical( loc_ndime, loc_set, trim(loc_name)//'.dat', matprop, err )
             end if
 
             if ( loc_ndime > gmsh % ndime ) gmsh % ndime = loc_ndime
@@ -746,8 +746,8 @@ contains
 
         ifmt = ''; str = ''
         str = repeat(' 0.000000000000',ndf)
-        write ( gri % ID, '(i10,A)')     1, str 
-        write ( gri % ID, '(i10,A)') nnode, str 
+        write ( gri % ID, '(i10,A)')     1, trim(str) 
+        write ( gri % ID, '(i10,A)') nnode, trim(str) 
 
 !-----------------------------------------------------------------------------------------
 !       Initial Stresses and Historical Variables
@@ -758,8 +758,8 @@ contains
                 write( gri % ID, 100 )
             end if
             str = repeat(' 0.000000000000',6)
-            write( gri % ID, '(i10,A)' )     1, str
-            write( gri % ID, '(i10,A)' ) nelem, str
+            write( gri % ID, '(i10,A)' )     1, trim(str)
+            write( gri % ID, '(i10,A)' ) nelem, trim(str)
         end if
         
 !-----------------------------------------------------------------------------------------
@@ -801,8 +801,8 @@ contains
 
         str = ''
         str = repeat(' 0.000000000000', nvar)
-        write( gri % ID, '(i10,A)' )     1, str
-        write( gri % ID, '(i10,A)' ) nelem, str
+        write( gri % ID, '(i10,A)' )     1, trim(str)
+        write( gri % ID, '(i10,A)' ) nelem, trim(str)
 
 !-----------------------------------------------------------------------------------------
 !       Plots       

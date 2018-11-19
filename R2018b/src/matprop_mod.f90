@@ -10,17 +10,21 @@ contains
         character(len=3) :: file_extens
         
         endfname = len_trim(filename)
-        file_extens(1:3) = filename(endfname-2:endfname)
-
+        file_extens(1:3) = filename(endfname-6:endfname-4)
+        
         select case( file_extens )
+        case ('lin')
+            call write_elastic( fileID )
         case ('tep')
             call write_tep( fileID )
-        case ('dam')
+        case ('d65')
             call write_damage( fileID )
-        case ('.dp')
+        case ('dpp')
             call write_drucker_prager( fileID )
+        case ('dam')
+            call write_damage_2( fileID )
         case default
-            call write_damage( fileID )            
+            call write_elastic( fileID )            
         end select
     end subroutine write_mech
 
@@ -96,11 +100,11 @@ contains
         integer :: fileID
 60      format(&
             & '   21 Damage_model_param.   65'/&
-            & ' E_(MPa)                17E+03 alphabiot                 0.0'/&
+            & ' E_(MPa)                17E+03 alphabiot                 1.0'/&
             & ' nu                        0.2 visco                     0.0'/&
             & ' ft_(MPa)                 1.25 r-r0_ratio                1.0'/&
             & ' H_(m^-1)                  0.0 iflag_tension             1.0'/&
-            & ' q                      17E+03 Gf_(MN-m)             120E-06'/&
+            & ' q                     1.0E-06 Gf_(MN-m)             120E-06'/&
             & '   22 Crack_properties       2'/&
             & ' t_mech             0.0000E+00 c_perm             0.0000E+00'/&
             & ' normal_x           0.0000E+00 n_perm             0.0000E+00'/&
@@ -167,23 +171,73 @@ contains
 !     end subroutine write_homog
 
 
+    subroutine write_elastic( fileID )
+        integer :: fileID
+150      format(&
+            & '   21 Linear_Elasticity    150'/&
+            & ' E_(MPa)                  3000 E_min_(MPa)        0.0000E+00'/&
+            & ' dEdphi_(MPa)              0.0 void               0.0000E+00'/&
+            & ' nu                        0.3 void               0.0000E+00'/&
+            & ' phi0                      0.0 void               0.0000E+00'/&
+            & ' phi_min                   0.0 void               0.0000E+00')             
+        write(fileID,150)
+    end subroutine write_elastic
+
+
+    subroutine write_damage_2( fileID )
+        integer :: fileID
+160      format(&
+            & '   21 Damage_model_param.  165'/&
+            & ' E_(MPa)                17E+03 void                      0.0'/&
+            & ' nu                        0.0 visco                     0.0'/&
+            & ' ft_(MPa)                 1.25 r-r0_ratio                1.0'/&
+            & ' H_(m^-1)                  0.0 iflag_tension             1.0'/&
+            & ' q                     1.0E-06 Gf_(MN-m)             120E-06'/&
+            & '   22 Crack_properties       2'/&
+            & ' t_mech             0.0000E+00 c_perm             0.0000E+00'/&
+            & ' normal_x           0.0000E+00 n_perm             0.0000E+00'/&
+            & ' normal_y           0.0000E+00 t_hydro_max        0.0000E+00'/&
+            & ' normal_z           0.0000E+00 ks0_(m2)              2.0e-16'/&
+            & ' fcrack_0           0.0000E+00 ks_max_(m2)           1.0e-05'/&
+            & '   33 Time_Step_Control      1'/&
+            & ' f_tol                 1.0E-04 void               0.0000E+00'/&
+            & ' dtime_max_(s)            0.01 void               0.0000E+00'/&
+            & ' void               0.0000E+00 void               0.0000E+00'/&
+            & ' void               0.0000E+00 void               0.0000E+00'/&
+            & ' void               0.0000E+00 void               0.0000E+00'/&
+            & '   35 Shear_Strengths        1'/&
+            & ' tau_s_(MPa)           4.0E-04 void               0.0000E+00'/&
+            & ' tau_l_(MPa)           4.0E-04 void               0.0000E+00'/&
+            & ' frict_s            0.0000E+00 void               0.0000E+00'/&
+            & ' frict_l            0.0000E+00 void               0.0000E+00'/&
+            & ' void               0.0000E+00 void               0.0000E+00'/&
+            & '   36 Stress_directions      1'/&
+            & ' n(1)                      0.0 s(3)                      0.0'/&
+            & ' n(2)                      0.0 l(1)                      0.0'/&
+            & ' n(3)                      1.0 l(2)                      1.0'/&
+            & ' s(1)                      1.0 l(3)                      0.0'/&
+            & ' s(2)                      0.0 void               0.0000E+00')             
+        write(fileID,160)
+    end subroutine write_damage_2
+
+
     subroutine write_hydro( fileID, ioptpl, ioptpg )
         integer, intent(in) :: fileID, ioptpl, ioptpg
-110     format(&
+510     format(&
             & '    7 Intrinsic_Permeab.     1'/&
             & ' k11O_(m2)             2.0E-16 beta(arg._koz)     0.0000E+00'/&
             & ' k22O_(m2)             2.0E-16 osm_eff            0.0000E+00'/&
             & ' k33O_(m2)             2.0E-16 void               0.0000E+00'/&
             & ' phi0               0.0000E+00 void               0.0000E+00'/&
             & ' phimin             0.0000E+00 void               0.0000E+00')
-111     format(&
+511     format(&
             & '   14 Liquid_rel.permeab.    6'/&
             & ' void               0.0000E+00 void               0.0000E+00'/&
             & ' A                         1.0 void               0.0000E+00'/&
             & ' lambda                    3.0 void               0.0000E+00'/&
             & ' Srl                 0.000E+00 void               0.0000E+00'/&
             & ' Sls                 0.000E+00 void               0.0000E+00')
-112     format(&
+512     format(&
             & '   19 Gas_rel.permeab.       1'/&
             & ' void               0.0000E+00 void               0.0000E+00'/&
             & ' A                  0.0000E+00 void               0.0000E+00'/&
@@ -192,16 +246,16 @@ contains
             & ' Sgs                0.0000E+00 void               0.0000E+00'&            
             &)
 
-        if ( ioptpl == 1 .or. ioptpg == 1 ) write(fileID,110)
-        if ( ioptpl == 1 ) write(fileID,111)
-        if ( ioptpg == 1 ) write(fileID,112)
+        if ( ioptpl == 1 .or. ioptpg == 1 ) write(fileID,510)
+        if ( ioptpl == 1 ) write(fileID,511)
+        if ( ioptpg == 1 ) write(fileID,512)
         if ( ioptpl == 1 .and. ioptpg == 1 ) call write_unsat( fileID )
     end subroutine write_hydro
 
     
     subroutine write_unsat( fileID )
         integer :: fileID
-120     format(&
+520     format(&
             & '    6 Retention_curve        1'/&
             & ' P0_(MPa)                 1.05 a                  0.0000E+00'/&
             & ' sigma0_(N-m)            0.072 b                  0.0000E+00'/&
@@ -227,27 +281,27 @@ contains
             & ' dl_heat_(m)        0.0000E+00 void               0.0000E+00'/&
             & ' dt_heat_(m)        0.0000E+00 void               0.0000E+00'&
             &)
-        write(fileID,120) 
+        write(fileID,520) 
     end subroutine write_unsat
 
 
     subroutine write_solid_prop( fileID )
         integer :: fileID
-130    format(&
+530    format(&
             & '   10 Solid_Phase_Prop.      3'/&
             & ' Cs_(J-kg-K)              1000 dCs-dt                   1.38'/&
             & ' rhos0_(kg-m3)            2770 betas_(MPa^-1)            0.0'/&
-            & ' alphas_(oC^-1)        7.8E-06 p0_(MPa)                  0.1'/&
+            & ' alphas_(oC^-1)        7.8E-06 p0_(MPa)                  0.0'/&
             & ' T0_(oC)                    40 BodyForce_0               0.0'/&
             & ' alphabiot                0.75 BodyForce_f               0.0'&
             &)
-        write(fileID,130)
+        write(fileID,530)
     end subroutine write_solid_prop
 
 
     subroutine write_liquid_prop( fileID )
         integer :: fileID
-140     format(&
+540     format(&
             & '   15 Liquid_density         1'/&
             & ' rhol0_(kg-m3)          1002.6 void               0.0000E+00'/&
             & ' betal_(MPa^-1)        4.5E-04 void               0.0000E+00'/&
@@ -261,13 +315,13 @@ contains
             & ' void               0.0000E+00 void               0.0000E+00'/&
             & ' void               0.0000E+00 void               0.0000E+00'&
             &)
-            write(fileID,140)
+            write(fileID,540)
     end subroutine write_liquid_prop
 
     
     subroutine write_gas_prop( fileID )
         integer :: fileID
-150      format(&
+550      format(&
              & '   17 Dry_air_density        1'/&
              & ' rhog0_(kg-m3)             0.1 P6                 0.0000E+00'/&
              & ' betag_(MPa^-1)             10 P7                 0.0000E+00'/&
@@ -281,13 +335,13 @@ contains
              & ' D                     1.2E+15 void               0.0000E+00'/&
              & ' void               0.0000E+00 void               0.0000E+00'&
              &)
-        write(fileID,150)
+        write(fileID,550)
     end subroutine write_gas_prop
 
     
     subroutine write_thermal_cond( fileID )
         integer :: fileID
-160     format(&
+560     format(&
             & '    9 Conduct.Heat_flux_1    1'/&
             & ' lam_dry_(W.m-K)          0.47 a1                 0.0000E+00'/&
             & ' lam_sat_(W.m-K)          1.15 a2                 0.0000E+00'/&
@@ -301,7 +355,7 @@ contains
             & ' void               0.0000E+00 void               0.0000E+00'/&
             & ' void               0.0000E+00 void               0.0000E+00'&
             &)
-        write(fileID,160)
+        write(fileID,560)
     end subroutine write_thermal_cond
         
 end module matprop_mod

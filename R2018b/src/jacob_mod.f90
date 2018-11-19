@@ -43,6 +43,7 @@ contains
                 
             else if ( ndim == 3 ) then
 
+                return
                 select case( eltype(iel) )
                 case ( 1 )
                     nnel = 4
